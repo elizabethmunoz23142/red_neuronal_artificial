@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Redes Neuronales - Calculadora de Préstamos</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
+  <style>
+    :root{--primary-color:#2563eb;--secondary-color:#1e40af;--bg-color:#f3f4f6;--card-bg:#ffffff;--text-color:#1f2937;--input-border:#d1d5db}
+    body{font-family:"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background-color:var(--bg-color);color:var(--text-color);display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;padding:20px}
+    .container{background-color:var(--card-bg);padding:40px;border-radius:16px;box-shadow:0 10px 25px rgba(0,0,0,.1);width:100%;max-width:480px}
+    h1{text-align:center;color:var(--primary-color);margin-bottom:10px;font-size:1.8rem}
+    p.subtitle{text-align:center;color:#6b7280;margin-bottom:30px;font-size:.9rem}
+    .form-group{margin-bottom:20px}
+    label{display:block;margin-bottom:8px;font-weight:600;font-size:.95rem}
+    .badge{font-size:.75rem;color:#4b5563;padding:2px 8px;margin-left:1px;vertical-align:middle;font-weight:normal}
+    .badge-neg{color:#991b1b}
+    select,input{width:100%;padding:12px;border:2px solid var(--input-border);border-radius:8px;font-size:1rem;transition:.3s;box-sizing:border-box;background:#fff}
+    select:focus,input:focus{outline:none;border-color:var(--primary-color);box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+    select:invalid{color:#9ca3af}
+    option{color:#1f2937}
+    button{width:100%;padding:15px;background:var(--primary-color);color:#fff;border:none;border-radius:8px;font-size:1.1rem;font-weight:bold;cursor:pointer;transition:.3s;margin-top:15px}
+    button:hover{background:var(--secondary-color)}
+    button:active{transform:scale(.98)}
+    #result{margin-top:30px;padding:20px;border-radius:12px;text-align:center;display:none;animation:fadeIn .5s ease}
+    .approved{background:#ecfdf5;color:#065f46;border:2px solid #34d399}
+    .rejected{background:#fef2f2;color:#991b1b;border:2px solid #f87171}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+    .meta{color:#6b7280;font-size:.85rem;text-align:center;margin-top:8px}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1><i class="bi bi-calculator"></i> Redes Neuronales - Calculadora de Crédito</h1>
+    <p class="subtitle">Complete los datos a continuación para evaluar su solicitud.</p>
+
+    <div class="meta">Estado del modelo: <span id="modelStatus">cargando…</span></div>
+
+    <form id="loanForm">
+      <div class="form-group">
+        <label><i class="bi bi-newspaper"></i> ¿Tiene historial de Crédito? <span class="badge badge-neg">*</span></label>
+        <select id="historial_credito" required>
+          <option value="" disabled selected hidden>Seleccione una opción...</option>
+          <option value="1">Sí (Deudas pagadas a tiempo)</option>
+          <option value="0">No (Incumplimientos previos)</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label><i class="bi bi-house-door-fill"></i> ¿Qué tipo de propiedad posee? <span class="badge badge-neg">*</span></label>
+        <select id="area_propiedad" required>
+          <option value="" disabled selected hidden>Seleccione un tipo...</option>
+          <option value="Semiurban">Semi-Urbana</option>
+          <option value="Urban">Urbana</option>
+          <option value="Rural">Rural</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label><i class="bi bi-person-heart"></i> ¿Cuál es su estado civil? <span class="badge badge-neg">*</span></label>
+        <select id="casado" required>
+          <option value="" disabled selected hidden>Seleccione estado civil...</option>
+          <option value="1">Casado/a</option>
+          <option value="0">Soltero/a</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label><i class="bi bi-person-badge"></i> ¿Es empleado independiente? <span class="badge badge-neg">*</span></label>
+        <select id="autoempleado" required>
+          <option value="" disabled selected hidden>Seleccione situación laboral...</option>
+          <option value="0">No (Empleado)</option>
+          <option value="1">Sí (Independiente)</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label><i class="bi bi-mortarboard"></i> Nivel Educativo: ¿Es usted graduado? <span class="badge badge-neg">*</span></label>
+        <select id="educacion" required>
+          <option value="" disabled selected hidden>Seleccione nivel...</option>
+          <option value="1">Graduado (Universitario)</option>
+          <option value="0">No Graduado</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label><i class="bi bi-gender-ambiguous"></i> Género <span class="badge badge-neg">*</span></label>
+        <select id="genero" required>
+          <option value="" disabled selected hidden>Seleccione género...</option>
+          <option value="1">Masculino</option>
+          <option value="0">Femenino</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label><i class="bi bi-people-fill"></i> ¿Cuántas personas dependen económicamente de usted? <span class="badge badge-neg">*</span></label>
+        <input type="number" id="dependientes" min="0" max="10" placeholder="Ej: 0, 1, 2..." required/>
+      </div>
+
+      <div class="form-group">
+        <label>Plazo del Préstamo (Meses)</label>
+        <input type="number" id="plazo" placeholder="Ej: 12, 24, 36" required/>
+      </div>
+
+      <div class="form-group">
+        <label>Monto Solicitado</label>
+        <input type="number" id="monto" placeholder="Ej: 1300" required/>
+      </div>
+
+      <div class="form-group">
+        <label>Ingreso del Solicitante</label>
+        <input type="number" id="ingreso_solicitante" placeholder="Ej: 1300" required/>
+      </div>
+
+      <div class="form-group">
+        <label>Ingreso del Co-Solicitante</label>
+        <input type="number" id="ingreso_co_solicitante" placeholder="Ej: 1300" required/>
+      </div>
+
+      <button type="button" id="btnEvaluar">Evaluar Solicitud</button>
+    </form>
+
+    <div id="result">
+      <h2 id="decisionText" style="margin:0;font-size:1.4rem;"></h2>
+      <p id="probText" style="margin:5px 0 0 0;"></p>
+      <div id="iconResult" style="font-size:3rem;margin-top:10px;"></div>
+    </div>
+  </div>
+
+  <script>
+    const MODEL_URL = "/folder/model.json";
+
+    let model = null;
+    const $ = (id) => document.getElementById(id);
+
+    // Carga del modelo (LayersModel prioritario)
+    async function loadModel() {
+      try {
+        $("modelStatus").textContent = "cargando modelo…";
+        model = await tf.loadLayersModel(MODEL_URL);
+        $("modelStatus").textContent = "modelo cargado ✅ (layers)";
+      } catch (e1) {
+        console.warn("No es layers model, intentando graph…", e1);
+        try {
+          model = await tf.loadGraphModel(MODEL_URL);
+          $("modelStatus").textContent = "modelo cargado ✅ (graph)";
+        } catch (e2) {
+          console.error("Error cargando el modelo:", e2);
+          $("modelStatus").textContent = "❌ No se pudo cargar el modelo. Revisa la ruta.";
+          alert("No se pudo cargar el modelo TFJS. Asegúrate de servir la página (http://localhost) y que model.json esté en la ruta configurada.");
+        }
+      }
+    }
+
+    // Construir vector de 12 features en el orden de entrenamiento
+    function buildFeatures() {
+      const area = $("area_propiedad").value;
+      const features = [
+        Number($("historial_credito").value || 0),   // 1: Historial
+        area === "Semiurban" ? 1 : 0,                // 2: Semiurban
+        area === "Urban" ? 1 : 0,                    // 3: Urban
+        Number($("casado").value || 0),              // 4: Casado
+        Number($("autoempleado").value || 0),        // 5: Autoempleado
+        Number($("educacion").value || 0),           // 6: Educación
+        Number($("genero").value || 0),              // 7: Género
+        Number($("dependientes").value || 0),        // 8: Dependientes
+        Number($("ingreso_solicitante").value || 0), // 9: Ingreso_Sol
+        Number($("ingreso_co_solicitante").value||0),//10: Ingreso_Co
+        Number($("monto").value || 0),               //11: Monto
+        Number($("plazo").value || 0)                //12: Plazo
+      ];
+      return features;
+    }
+
+    async function infer() {
+      if (!model) { alert("El modelo aún no está cargado."); return; }
+
+      // Validación simple
+      for (const id of [
+        "historial_credito","area_propiedad","casado","autoempleado",
+        "educacion","genero","dependientes","plazo","monto",
+        "ingreso_solicitante","ingreso_co_solicitante"
+      ]) {
+        const el = $(id);
+        if (!el.value && el.value !== 0) {
+          alert("Por favor, complete todos los campos.");
+          return;
+        }
+      }
+
+      const feats = buildFeatures();
+      const x = tf.tensor2d([feats], [1, 12], "float32");
+
+      try {
+        // LayersModel → predict()
+        if (typeof model.predict === "function") {
+          const y = model.predict(x);
+          const p = (await y.data())[0];
+          tf.dispose([x, y]);
+          render(p);
+          return;
+        }
+
+        // GraphModel (1 input/1 output; intenta por defecto)
+        const y = await model.executeAsync ? await model.executeAsync(x) : model.execute(x);
+        const p = (await y.data())[0];
+        tf.dispose([x, y]);
+        render(p);
+      } catch (err) {
+        tf.dispose(x);
+        console.error("Error en inferencia:", err);
+        alert("No se pudo ejecutar la predicción. Revisa la consola para más detalles.");
+      }
+    }
+
+    function render(prob) {
+        // prob es la salida directa del modelo (sigmoid), sin transformaciones
+        const resultDiv  = $("result");
+        const decisionTxt= $("decisionText");
+        const probTxt    = $("probText");
+        const iconRes    = $("iconResult");
+
+        // Decisión tal cual define el modelo binario: p >= 0.5 → aprueba
+        const aprobado = prob >= 0.5;
+
+        decisionTxt.textContent = aprobado ? "PRÉSTAMO APROBADO" : "PRÉSTAMO RECHAZADO";
+        probTxt.textContent     = `Salida del modelo (p): ${prob}`;
+        iconRes.textContent     = aprobado ? "✅" : "❌";
+
+        resultDiv.className     = aprobado ? "approved" : "rejected";
+        resultDiv.style.display = "block";
+        resultDiv.scrollIntoView({ behavior: "smooth" });
+    }
+
+    $("btnEvaluar").addEventListener("click", infer);
+    loadModel();
+  </script>
+</body>
+</html>
