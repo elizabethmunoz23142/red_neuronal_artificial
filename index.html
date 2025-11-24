@@ -103,20 +103,18 @@
         <input type="number" id="plazo" placeholder="Ej: 12, 24, 36" required/>
       </div>
 
-      <div class="form-group">
-        <label>Monto Solicitado</label>
-        <input type="number" id="monto" placeholder="Ej: 1300" required/>
-      </div>
-
-      <div class="form-group">
-        <label>Ingreso del Solicitante</label>
-        <input type="number" id="ingreso_solicitante" placeholder="Ej: 1300" required/>
-      </div>
-
-      <div class="form-group">
-        <label>Ingreso del Co-Solicitante</label>
-        <input type="number" id="ingreso_co_solicitante" placeholder="Ej: 1300" required/>
-      </div>
+    <div class="form-group">
+      <label><i class="bi bi-cash-coin icon-label"></i> Monto Solicitado (USD - Miles)</label>
+      <input type="number" id="monto" placeholder="Ej: $150 (para 150k USD)" required />
+    </div> 
+    <div class="form-group">
+      <label><i class="bi bi-coin icon-label"></i> ¿Cuánto son sus ingresos mensuales?</label>
+      <input type="number" id="ingreso_solicitante" placeholder="Ej: 5000" required />
+    </div> 
+    <div class="form-group">
+      <label><i class="bi bi-coin icon-label"></i> ¿Cuánto son los ingresos mensuales del Co-Solicitante?</label>
+      <input type="number" id="ingreso_co_solicitante" placeholder="Ej: 0" required />
+    </div>
 
       <button type="button" id="btnEvaluar">Evaluar Solicitud</button>
     </form>
@@ -134,43 +132,45 @@
     let model = null;
     const $ = (id) => document.getElementById(id);
 
-    // Carga del modelo (LayersModel prioritario)
+    // Carga del modelo
     async function loadModel() {
-      try {
-        $("modelStatus").textContent = "cargando modelo…";
-        model = await tf.loadLayersModel(MODEL_URL);
-        $("modelStatus").textContent = "modelo cargado ✅ (layers)";
-      } catch (e1) {
-        console.warn("No es layers model, intentando graph…", e1);
-        try {
-          model = await tf.loadGraphModel(MODEL_URL);
-          $("modelStatus").textContent = "modelo cargado ✅ (graph)";
-        } catch (e2) {
-          console.error("Error cargando el modelo:", e2);
-          $("modelStatus").textContent = "❌ No se pudo cargar el modelo. Revisa la ruta.";
-          alert("No se pudo cargar el modelo TFJS. Asegúrate de servir la página (http://localhost) y que model.json esté en la ruta configurada.");
-        }
+      try{
+        $('modelStatus').textContent = 'cargando modelo...';
+        model = await tf.loadGraphModel(MODEL_URL);
+        $('modelStatus').textContent = 'modelo cargado ✅';
+      }catch(err){
+        console.error(err);
+        $('modelStatus').textContent = 'error cargando modelo — compruebe la ruta y que los archivos estén en ./folder/';
       }
     }
 
     // Construir vector de 12 features en el orden de entrenamiento
     function buildFeatures() {
-      const area = $("area_propiedad").value;
-      const features = [
-        Number($("historial_credito").value || 0),   // 1: Historial
-        area === "Semiurban" ? 1 : 0,                // 2: Semiurban
-        area === "Urban" ? 1 : 0,                    // 3: Urban
-        Number($("casado").value || 0),              // 4: Casado
-        Number($("autoempleado").value || 0),        // 5: Autoempleado
-        Number($("educacion").value || 0),           // 6: Educación
-        Number($("genero").value || 0),              // 7: Género
-        Number($("dependientes").value || 0),        // 8: Dependientes
-        Number($("ingreso_solicitante").value || 0), // 9: Ingreso_Sol
-        Number($("ingreso_co_solicitante").value||0),//10: Ingreso_Co
-        Number($("monto").value || 0),               //11: Monto
-        Number($("plazo").value || 0)                //12: Plazo
-      ];
-      return features;
+    const area = $("area_propiedad").value;
+
+    // DUMMIES de área (Rural es la base → ambas 0)
+    const semiurban = area === "Semiurban" ? 1 : 0;
+    const urban     = area === "Urban"     ? 1 : 0;
+
+    // IMPORTANTE: mismo orden que en el entrenamiento
+    const features = [
+        Number($("genero").value || 0),                 // 1 Genero
+        Number($("casado").value || 0),                 // 2 Casado
+        Number($("dependientes").value || 0),           // 3 Dependientes
+        Number($("educacion").value || 0),              // 4 Educacion
+        Number($("autoempleado").value || 0),           // 5 Autoempleado
+        Number($("ingreso_solicitante").value || 0),    // 6 Ingreso_Solicitante
+        Number($("ingreso_co_solicitante").value || 0), // 7 Ingreso_CoSolicitante
+        Number($("monto").value || 0),                  // 8 Monto_Prestamo
+        Number($("plazo").value || 0),                  // 9 Plazo_Prestamo
+        Number($("historial_credito").value || 0),      // 10 Historial_Credito
+        semiurban,                                      // 11 Area_Propiedad_Semiurban
+        urban                                           // 12 Area_Propiedad_Urban
+    ];
+
+    // DEBUG opcional
+    console.log("features (orden correcto):", features);
+    return features;
     }
 
     async function infer() {
